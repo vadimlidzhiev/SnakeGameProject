@@ -8,10 +8,17 @@ namespace SnakeGameProject.States
         {
             public int X;
             public int Y;
-            public Cell(int x, int y) { X = x; Y = y; }
+            public Cell(int x, int y)
+            { X = x; Y = y; }
         }
 
-        public enum SnakeDir { Left, Right, Up, Down }
+        public enum SnakeDir 
+        { 
+            Left, 
+            Right, 
+            Up, 
+            Down 
+        }
 
         private readonly List<Cell> _body = new();
         private SnakeDir _currentDir;
@@ -38,8 +45,8 @@ namespace SnakeGameProject.States
                 var head = _body[0];
                 var next = ShiftTo(head);
 
-                _body.RemoveAt(_body.Count - 1); // срез хвоста
-                _body.Insert(0, next);           // новая голова в начало списка
+                _body.RemoveAt(_body.Count - 1);        // срез хвоста
+                _body.Insert(0, next);                  // новая голова в начало списка
             }
 
             // вывод координат головы

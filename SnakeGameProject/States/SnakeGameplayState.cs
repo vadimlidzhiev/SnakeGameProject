@@ -27,7 +27,7 @@ namespace SnakeGameProject.States
         private readonly List<Cell> _body = new();
         private SnakeDir _currentDir;
 
-        private float _timeToMove;
+        private float _timeToMove;                       // секунд до следующего шага
         private readonly float _moveInterval = GameSettings.MoveInterval;
 
         private readonly ConsoleRenderer _renderer;

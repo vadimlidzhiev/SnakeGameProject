@@ -1,6 +1,7 @@
 ﻿using SnakeGameProject.Config;
 using SnakeGameProject.Input;
 using SnakeGameProject.Logic;
+using SnakeGameProject.Renderer;
 
 namespace SnakeGameProject
 {
@@ -8,7 +9,18 @@ namespace SnakeGameProject
     {
         static void Main(string[] args)
         {
-            var gameLogic = new SnakeGameLogic();
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            Console.CursorVisible = false;
+            Console.SetWindowSize(GameSettings.Width, GameSettings.Height);
+
+            var renderer = new ConsoleRenderer(
+                new[] { ConsoleColor.Black, ConsoleColor.Green })
+            {
+                bgColor = ConsoleColor.Black   // если в классе есть такое свойство
+            };
+
+            var gameLogic = new SnakeGameLogic(renderer);
+
             var input = new ConsoleInput();
             gameLogic.InitializeInput(input);
             gameLogic.GotoGameplay();
@@ -19,12 +31,12 @@ namespace SnakeGameProject
             {
                 input.Update();
 
-                var frameStart = DateTime.UtcNow;
-                var deltaTimeSec = (float)(frameStart - lastFrameTime).TotalSeconds;
+                var now = DateTime.UtcNow;
+                var deltaSec = (float)(now - lastFrameTime).TotalSeconds;
+                lastFrameTime = now;
 
-                gameLogic.Update(deltaTimeSec);
+                gameLogic.Update(deltaSec);
 
-                lastFrameTime = frameStart;
                 Thread.Sleep(GameSettings.FrameMs);
             }
         }

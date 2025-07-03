@@ -1,10 +1,15 @@
-﻿using SnakeGameProject.States;
+﻿using SnakeGameProject.Renderer;
+using SnakeGameProject.States;
 
 namespace SnakeGameProject.Logic
 {
     public class SnakeGameLogic : BaseGameLogic
     {
-        private readonly SnakeGameplayState _gameplayState = new();
+        private readonly SnakeGameplayState _gameplayState;
+        public SnakeGameLogic(ConsoleRenderer renderer)
+        {
+            _gameplayState = new SnakeGameplayState(renderer);
+        }
 
         public void GotoGameplay() => _gameplayState.Reset();
 

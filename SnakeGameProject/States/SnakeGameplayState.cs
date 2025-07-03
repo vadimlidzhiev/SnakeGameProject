@@ -1,4 +1,5 @@
 ﻿using SnakeGameProject.Config;
+using SnakeGameProject.Renderer;
 
 namespace SnakeGameProject.States
 {
@@ -9,7 +10,10 @@ namespace SnakeGameProject.States
             public int X;
             public int Y;
             public Cell(int x, int y)
-            { X = x; Y = y; }
+            {
+                X = x;
+                Y = y;
+            }
         }
 
         public enum SnakeDir 
@@ -23,36 +27,50 @@ namespace SnakeGameProject.States
         private readonly List<Cell> _body = new();
         private SnakeDir _currentDir;
 
-        private float _timeToMove;                       // секунд до следующего шага
+        private float _timeToMove;
         private readonly float _moveInterval = GameSettings.MoveInterval;
+
+        private readonly ConsoleRenderer _renderer;
+        private const char SnakeChar = '■';
+        private const byte SnakeColorIdx = 1;   // 0 = черный, 1 = зеленый
+
+        public SnakeGameplayState(ConsoleRenderer renderer)
+        {
+            _renderer = renderer;
+            Reset();
+        }
 
         public override void Reset()
         {
             _body.Clear();
-            _currentDir = SnakeDir.Right;                // направление по умолчанию
-            _body.Add(new Cell(0, 0));                   // голова в начале координат
+            // Стартовая позиция в центре поля
+            _body.Add(new Cell(GameSettings.Width / 2, GameSettings.Height / 2));
+            _currentDir = SnakeDir.Right; // направление по умолчанию
             _timeToMove = 0f;
+            Draw();
         }
 
         public override void Update(float deltaTime)
         {
             _timeToMove -= deltaTime;
+            var moved = false;
 
             while (_timeToMove <= 0f)
             {
                 _timeToMove += _moveInterval;
 
-                var head = _body[0];
-                var next = ShiftTo(head);
+                var nextHead = ShiftTo(_body[0]);
+                _body.Insert(0, nextHead);
 
-                _body.RemoveAt(_body.Count - 1);        // срез хвоста
-                _body.Insert(0, next);                  // новая голова в начало списка
+                // Пока длина змейки 1 только голова
+                if (_body.Count > 1)
+                    _body.RemoveAt(_body.Count - 1);
+
+                moved = true;
             }
 
-            // вывод координат головы
-            var cur = _body[0];
-            Console.SetCursorPosition(0, 0);
-            Console.Write($"Head: X={cur.X}, Y={cur.Y}   ");
+            if (moved)
+                Draw();
         }
 
         public void SetDirection(SnakeDir dir)
@@ -66,16 +84,29 @@ namespace SnakeGameProject.States
             _currentDir = dir;
         }
 
-        private Cell ShiftTo(Cell from)
+        private Cell ShiftTo(Cell from) => _currentDir switch
         {
-            return _currentDir switch
+            SnakeDir.Left => new Cell(from.X - 1, from.Y),
+            SnakeDir.Right => new Cell(from.X + 1, from.Y),
+            SnakeDir.Up => new Cell(from.X, from.Y - 1),
+            SnakeDir.Down => new Cell(from.X, from.Y + 1),
+            _ => from
+        };
+
+        private void Draw()
+        {
+            _renderer.Clear();
+
+            foreach (var cell in _body)
             {
-                SnakeDir.Left => new Cell(from.X - 1, from.Y),
-                SnakeDir.Right => new Cell(from.X + 1, from.Y),
-                SnakeDir.Up => new Cell(from.X, from.Y + 1),
-                SnakeDir.Down => new Cell(from.X, from.Y - 1),
-                _ => from
-            };
+                if (cell.X >= 0 && cell.X < GameSettings.Width &&
+                    cell.Y >= 0 && cell.Y < GameSettings.Height)
+                {
+                    _renderer.SetPixel(cell.X, cell.Y, SnakeChar, SnakeColorIdx);
+                }
+            }
+
+            _renderer.Render();
         }
     }
 }

@@ -7,37 +7,39 @@ namespace SnakeGameProject
 {
     public static class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Console.CursorVisible = false;
-            Console.SetWindowSize(GameSettings.Width, GameSettings.Height);
 
             var renderer = new ConsoleRenderer(
-                new[] { ConsoleColor.Black, ConsoleColor.Green })
+                [ConsoleColor.Black,
+                ConsoleColor.Green,
+                ConsoleColor.Red,
+                ConsoleColor.White])
             {
-                bgColor = ConsoleColor.Black   // если в классе есть такое свойство
+                BgColor = ConsoleColor.Black
             };
-
             var gameLogic = new SnakeGameLogic(renderer);
-
             var input = new ConsoleInput();
             gameLogic.InitializeInput(input);
-            gameLogic.GotoGameplay();
 
-            var lastFrameTime = DateTime.UtcNow;
+            var target = TimeSpan.FromMilliseconds(GameSettings.FrameMs);
+            var last = DateTime.UtcNow;
 
             while (true)
             {
                 input.Update();
 
                 var now = DateTime.UtcNow;
-                var deltaSec = (float)(now - lastFrameTime).TotalSeconds;
-                lastFrameTime = now;
+                var delta = (float)(now - last).TotalSeconds;
+                last = now;
+                gameLogic.Update(delta);
 
-                gameLogic.Update(deltaSec);
-
-                Thread.Sleep(GameSettings.FrameMs);
+                var spent = DateTime.UtcNow - now;       
+                var left = target - spent;
+                if (left > TimeSpan.Zero)   
+                    Thread.Sleep(left);                 
             }
         }
     }

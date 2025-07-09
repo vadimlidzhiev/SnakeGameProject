@@ -3,110 +3,156 @@ using SnakeGameProject.Renderer;
 
 namespace SnakeGameProject.States
 {
-    public class SnakeGameplayState : BaseGameState
+    public class SnakeGameplayState(ConsoleRenderer r) : BaseGameState
     {
-        public struct Cell
+        public struct Cell(int x, int y)
         {
-            public int X;
-            public int Y;
-            public Cell(int x, int y)
-            {
-                X = x;
-                Y = y;
-            }
+            public int X = x, Y = y;
         }
-
-        public enum SnakeDir 
-        { 
-            Left, 
-            Right, 
-            Up, 
-            Down 
-        }
-
-        private readonly List<Cell> _body = new();
-        private SnakeDir _currentDir;
-
-        private float _timeToMove;                       // секунд до следующего шага
-        private readonly float _moveInterval = GameSettings.MoveInterval;
-
-        private readonly ConsoleRenderer _renderer;
-        private const char SnakeChar = '■';
-        private const byte SnakeColorIdx = 1;   // 0 = черный, 1 = зеленый
-
-        public SnakeGameplayState(ConsoleRenderer renderer)
+        public enum SnakeDir
         {
-            _renderer = renderer;
-            Reset();
+            Left,
+            Right,
+            Up,
+            Down
         }
+
+        private readonly List<Cell> _body = [];
+        private SnakeDir _dir;
+        private float _moveInterval;
+        private float _timeToMove;
+
+        // яблоко
+        private readonly Random _rng = new();
+        private Cell _apple;
+        private const char AppleCh = '0';
+        private const byte AppleClr = 2;
+
+        // состояние
+        public bool GameOver { get; private set; }
+        public bool Win { get; private set; }
+        public int Level { get; set; }
+
+        // отрисовка
+        private readonly ConsoleRenderer _r = r;
+        private const char SnakeCh = '■';
+        private const byte SnakeClr = 1;
 
         public override void Reset()
         {
             _body.Clear();
-            // Стартовая позиция в центре поля
             _body.Add(new Cell(GameSettings.Width / 2, GameSettings.Height / 2));
-            _currentDir = SnakeDir.Right; // направление по умолчанию
-            _timeToMove = 0f;
-            Draw();
+
+            _dir = SnakeDir.Right;
+            _moveInterval = GameSettings.SpeedForLevel(Level);
+            _timeToMove = 0;
+
+            GameOver = Win = false;
+            SpawnApple();
+            Draw(_r);
         }
 
-        public override void Update(float deltaTime)
+        public override void Update(float dt)
         {
-            _timeToMove -= deltaTime;
-            var moved = false;
+            if (GameOver || Win) return;
 
-            while (_timeToMove <= 0f)
+            _timeToMove -= dt;
+            if (_timeToMove <= 0f)     
             {
-                _timeToMove += _moveInterval;
+                do _timeToMove += _moveInterval;
+                while (_timeToMove <= 0f);
+                Step();
+            }
+        }
 
-                var nextHead = ShiftTo(_body[0]);
-                _body.Insert(0, nextHead);
+        private void Step()
+        {
+            var head = Next(_body[0]);
 
-                // Пока длина змейки 1 только голова
-                if (_body.Count > 1)
-                    _body.RemoveAt(_body.Count - 1);
-
-                moved = true;
+            if (head.X <= 0 || head.X >= GameSettings.Width - 1 ||
+                head.Y <= 0 || head.Y >= GameSettings.Height - 1)
+            {
+                GameOver = true;
+                return;
             }
 
-            if (moved)
-                Draw();
+            bool ate = head.X == _apple.X && head.Y == _apple.Y;
+
+            _body.Insert(0, head);
+            if (!ate) _body.RemoveAt(_body.Count - 1);
+            else
+            {
+                if (_body.Count - 1 >= GameSettings.ApplesForLevel(Level))
+                    Win = true;
+                else
+                    SpawnApple();
+            }
         }
 
-        public void SetDirection(SnakeDir dir)
+        private Cell Next(Cell c) => _dir switch
         {
-            if ((_currentDir == SnakeDir.Left && dir == SnakeDir.Right) ||
-                (_currentDir == SnakeDir.Right && dir == SnakeDir.Left) ||
-                (_currentDir == SnakeDir.Up && dir == SnakeDir.Down) ||
-                (_currentDir == SnakeDir.Down && dir == SnakeDir.Up))
-                return;
-
-            _currentDir = dir;
-        }
-
-        private Cell ShiftTo(Cell from) => _currentDir switch
-        {
-            SnakeDir.Left => new Cell(from.X - 1, from.Y),
-            SnakeDir.Right => new Cell(from.X + 1, from.Y),
-            SnakeDir.Up => new Cell(from.X, from.Y - 1),
-            SnakeDir.Down => new Cell(from.X, from.Y + 1),
-            _ => from
+            SnakeDir.Left => new(c.X - 1, c.Y),
+            SnakeDir.Right => new(c.X + 1, c.Y),
+            SnakeDir.Up => new(c.X, c.Y - 1),
+            SnakeDir.Down => new(c.X, c.Y + 1),
+            _ => c
         };
 
-        private void Draw()
+        private void SpawnApple()
         {
-            _renderer.Clear();
+            Cell p;
+            do
+                p = new(_rng.Next(1, GameSettings.Width - 1),
+                        _rng.Next(1, GameSettings.Height - 1));
+            while (_body.Any(b => b.X == p.X && b.Y == p.Y));
+            _apple = p;
+        }
 
-            foreach (var cell in _body)
+        public void SetDirection(SnakeDir d)
+        {
+            bool opposite = (_dir, d) switch
             {
-                if (cell.X >= 0 && cell.X < GameSettings.Width &&
-                    cell.Y >= 0 && cell.Y < GameSettings.Height)
-                {
-                    _renderer.SetPixel(cell.X, cell.Y, SnakeChar, SnakeColorIdx);
-                }
+                (SnakeDir.Left, SnakeDir.Right) or
+                (SnakeDir.Right, SnakeDir.Left) or
+                (SnakeDir.Up, SnakeDir.Down) or
+                (SnakeDir.Down, SnakeDir.Up) => true,
+                _ => false
+            };
+            if (!opposite) _dir = d;
+        }
+
+        public override void Draw(ConsoleRenderer r)
+        {
+            r.Clear();
+            const char WallCh = '■';
+            const byte WallClr = 3;      // индекс белого цвета
+
+            // верх / низ
+            for (int x = 0; x < GameSettings.Width; x++)
+            {
+                r.SetPixel(x, 0, WallCh, WallClr);
+                r.SetPixel(x, GameSettings.Height - 1, WallCh, WallClr);
+            }
+            // левый / правый край
+            for (int y = 0; y < GameSettings.Height; y++)
+            {
+                r.SetPixel(0, y, WallCh, WallClr);
+                r.SetPixel(GameSettings.Width - 1, y, WallCh, WallClr);
             }
 
-            _renderer.Render();
+            // яблоко
+            r.SetPixel(_apple.X, _apple.Y, AppleCh, AppleClr);
+
+            // змейка
+            foreach (var c in _body)
+                r.SetPixel(c.X, c.Y, SnakeCh, SnakeClr);
+
+            // HUD → заголовок окна
+            Console.Title = $"Lvl:{Level} | 🍎 {_body.Count - 1}/{GameSettings.ApplesForLevel(Level)}";
+
+            r.Render();
         }
+
+        public override bool IsDone() => GameOver || Win;
     }
 }

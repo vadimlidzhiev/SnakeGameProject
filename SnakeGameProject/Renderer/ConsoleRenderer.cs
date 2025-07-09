@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SnakeGameProject.Renderer
+﻿namespace SnakeGameProject.Renderer
 {
     public class ConsoleRenderer
     {
-        public int width { get; private set; }
-        public int height { get; private set; }
+        public int Width { get; private set; }
+        public int Height { get; private set; }
 
         private const int MaxColors = 8;
         private readonly ConsoleColor[] _colors;
@@ -18,11 +12,11 @@ namespace SnakeGameProject.Renderer
         private readonly int _maxWidth;
         private readonly int _maxHeight;
 
-        public ConsoleColor bgColor {  get; set; }
+        public ConsoleColor BgColor { get; set; }
 
         public char this[int w, int h]
         {
-            get {  return _pixels[w, h]; }
+            get { return _pixels[w, h]; }
             set { _pixels[w, h] = value; }
         }
 
@@ -39,11 +33,10 @@ namespace SnakeGameProject.Renderer
 
             _maxWidth = Console.LargestWindowWidth;
             _maxHeight = Console.LargestWindowHeight;
-            width = Console.WindowWidth;
-            height = Console.WindowHeight;
-
-            _pixels = new char[_maxWidth, _maxHeight];
-            _pixelColors = new byte[_maxWidth, _maxHeight];
+            Width = Console.WindowWidth;
+            Height = Console.WindowHeight;
+            _pixels = new char[Width, Height];
+            _pixelColors = new byte[Width, Height];
         }
 
         public void SetPixel(int w, int h, char val, byte colorIdx)
@@ -55,27 +48,42 @@ namespace SnakeGameProject.Renderer
 
         public void Render()
         {
-            Console.Clear();
-            Console.BackgroundColor = bgColor;
+            Console.CursorVisible = false;
+            Console.BackgroundColor = BgColor;
 
-            for (var w = 0; w < width; w++)
-                for (var h = 0; h < height; h++)
+            Console.SetCursorPosition(0, 0);
+
+            var currentColor = BgColor;
+            Console.ForegroundColor = currentColor;
+
+            for (int h = 0; h < Height; h++)
+            {
+                for (int w = 0; w < Width; w++)
                 {
-                    var colorIdx = _pixelColors[w, h];
-                    var color = _colors[colorIdx];
-                    var symbol = _pixels[w, h];
+                    char ch = _pixels[w, h];
+                    byte clrIdx = _pixelColors[w, h];
 
-                    if (symbol == 0 || color == bgColor)
-                        continue;
+                    if (ch == 0)
+                    {
+                        ch = ' ';
+                        clrIdx = 0;
+                    }
 
-                    Console.ForegroundColor = color;
+                    var clr = _colors[clrIdx];
 
-                    Console.SetCursorPosition(w, h);
-                    Console.Write(symbol);
+                    if (clr != currentColor)
+                    {
+                        Console.ForegroundColor = clr;
+                        currentColor = clr;
+                    }
+
+                    Console.Write(ch);
                 }
 
+                if (h < Height - 1) Console.Write('\n');
+            }
+
             Console.ResetColor();
-            Console.CursorVisible = false;
         }
 
         public void DrawString(string text, int atWidth, int atHeight, ConsoleColor color)
@@ -84,20 +92,20 @@ namespace SnakeGameProject.Renderer
             if (colorIdx < 0)
                 return;
 
-            for (int i=0; i<text.Length; i++)
+            for (int i = 0; i < text.Length; i++)
             {
                 _pixels[atWidth + i, atHeight] = text[i];
-                _pixelColors[atWidth + i, atHeight] = (byte) colorIdx;
+                _pixelColors[atWidth + i, atHeight] = (byte)colorIdx;
             }
         }
 
         public void Clear()
         {
-            for (int w = 0; w < width; w++)
-                for (int h = 0; h < height; h++)
+            for (int w = 0; w < Width; w++)
+                for (int h = 0; h < Height; h++)
                 {
                     _pixelColors[w, h] = 0;
-                    _pixels[w, h] = (char) 0;
+                    _pixels[w, h] = (char)0;
                 }
         }
 
@@ -107,21 +115,21 @@ namespace SnakeGameProject.Renderer
                 return false;
 
             if (_maxWidth != casted._maxWidth || _maxHeight != casted._maxHeight ||
-                width != casted.width || height != casted.height ||
+                Width != casted.Width || Height != casted.Height ||
                 _colors.Length != casted._colors.Length)
             {
                 return false;
             }
 
 
-            for (int i=0; i<_colors.Length; i++)
+            for (int i = 0; i < _colors.Length; i++)
             {
                 if (_colors[i] != casted._colors[i])
                     return false;
             }
 
-            for (int w = 0; w < width; w++)
-                for (var h = 0; h < height; h++)
+            for (int w = 0; w < Width; w++)
+                for (var h = 0; h < Height; h++)
                 {
                     if (_pixels[w, h] != casted._pixels[w, h] ||
                                     _pixelColors[w, h] != casted._pixelColors[w, h])
@@ -135,15 +143,15 @@ namespace SnakeGameProject.Renderer
 
         public override int GetHashCode()
         {
-            var hash = HashCode.Combine(_maxWidth, _maxHeight, width, height);
+            var hash = HashCode.Combine(_maxWidth, _maxHeight, Width, Height);
 
-            for (int i=0; i<_colors.Length; i++)
+            for (int i = 0; i < _colors.Length; i++)
             {
                 hash = HashCode.Combine(hash, _colors[i]);
             }
 
-            for (int w = 0; w < width; w++)
-                for (var h = 0; h < height; h++)
+            for (int w = 0; w < Width; w++)
+                for (var h = 0; h < Height; h++)
                 {
                     hash = HashCode.Combine(hash, _pixelColors[w, h], _pixels[w, h]);
                 }

@@ -5,23 +5,59 @@ namespace SnakeGameProject.Logic
 {
     public class SnakeGameLogic : BaseGameLogic
     {
-        private readonly SnakeGameplayState _gameplayState;
-        public SnakeGameLogic(ConsoleRenderer renderer)
+        private readonly ConsoleRenderer _r;
+        private readonly SnakeGameplayState _play;
+        private readonly ShowTextState _text;
+        private int _level;
+
+        public SnakeGameLogic(ConsoleRenderer r)
         {
-            _gameplayState = new SnakeGameplayState(renderer);
+            _r = r;
+            _play = new SnakeGameplayState(r);
+            _text = new ShowTextState(r, "SNAKE", 2f);
+
+            ChangeToText("SNAKE");
         }
 
-        public void GotoGameplay() => _gameplayState.Reset();
+        public override void Update(float dt)
+        {
+            currentState.Update(dt);
+            currentState.Draw(_r);
 
-        public override void Update(float deltaTime) => _gameplayState.Update(deltaTime);
+            if (!currentState.IsDone()) return;
+
+            if (currentState == _text)          // после текста → игра
+                StartLevel(_level);
+            else if (_play.Win)                 // победили → следующий уровень
+                ChangeToText($"LEVEL {_level += 1}");
+            else if (_play.GameOver)            // проигрыш
+                ChangeToText("GAME OVER");
+        }
 
         public override void OnArrowUp() => 
-            _gameplayState.SetDirection(SnakeGameplayState.SnakeDir.Up);
+            _play.SetDirection(SnakeGameplayState.SnakeDir.Up);
         public override void OnArrowDown() => 
-            _gameplayState.SetDirection(SnakeGameplayState.SnakeDir.Down);
+            _play.SetDirection(SnakeGameplayState.SnakeDir.Down);
         public override void OnArrowLeft() => 
-            _gameplayState.SetDirection(SnakeGameplayState.SnakeDir.Left);
+            _play.SetDirection(SnakeGameplayState.SnakeDir.Left);
         public override void OnArrowRight() => 
-            _gameplayState.SetDirection(SnakeGameplayState.SnakeDir.Right);
+            _play.SetDirection(SnakeGameplayState.SnakeDir.Right);
+
+        private void StartLevel(int lvl)
+        {
+            _play.Level = lvl;
+            _play.Reset();
+            currentState = _play;
+        }
+
+        private void ChangeToText(string msg)
+        {
+            _text.Text = msg;
+            _text.Reset();
+            currentState = _text;
+        }
+
+        public override ConsoleColor[] CreatePallete() =>
+            [ConsoleColor.Black, ConsoleColor.Green, ConsoleColor.Red];
     }
 }
